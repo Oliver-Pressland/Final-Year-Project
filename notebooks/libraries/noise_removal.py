@@ -4,7 +4,7 @@ Created on Wed Nov 18 12:34:18 2020
 
 @author: Oliver
 """
-from scipy.signal import lfilter, filtfilt
+from scipy.signal import lfilter, filtfilt, savgol_filter
 class BaselineNoiseRemover():
     
     def __init__(self, c):
@@ -16,4 +16,5 @@ class BaselineNoiseRemover():
         b = [1, -1];
         a = [1, self.c];
         filt = filtfilt(b, a, sig);
+        filt = savgol_filter(filt, 25, 2)
         return filt
