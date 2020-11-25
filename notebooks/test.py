@@ -10,6 +10,7 @@ import scipy.io
 import pandas as pd
 import matplotlib.pyplot as plt
 from pathlib import Path
+from scipy.signal import savgol_filter, find_peaks
 
 database = pd.DataFrame(columns=['condition', 'name', 'ecg'])
 
@@ -90,3 +91,26 @@ examples = qrs_db[qrs_db['condition'] == '1 NSR']
 for i in range(0, 50):
     e1 = examples.loc[i]
     plt.plot(e1['wavelet'])
+    
+e1 = qrs_db.loc[15]
+e2 = qrs_db.loc[22]
+e1w = e1['wavelet']
+e2w = e2['wavelet']
+    
+heights = []
+        
+
+high, pos1 = find_peaks(e1w, height=20)
+low, pos2 = find_peaks(-e1w, height=20)
+
+height1 = (high - low)
+
+pos1 = pos1['peak_heights']
+pos1 = pos1[0]
+pos2 = pos2['peak_heights']
+pos2 = pos2[0]
+
+height2 = (pos1 - pos2)
+height = (high + (low * -1))
+heights.append(height)
+    

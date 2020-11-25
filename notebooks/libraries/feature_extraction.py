@@ -8,6 +8,7 @@ from pywt import wavedec
 from scipy.signal import savgol_filter, find_peaks
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 class LargeFrequencyExtractor():
     
@@ -135,10 +136,21 @@ class QRSHeightExtractor():
         heights = []
         
         for wave in database['wavelet']:
-            high, position = find_peaks(wave, height=self.c)
-            low, position = find_peaks(-wave, height=self.c)
+            high, pos1 = find_peaks(wave, height=self.c)
+            low, pos2 = find_peaks(-wave, height=self.c)
             
-            height = (high[0] -- low[0])
+            height1 = (high - low)
+            
+            pos1 = pos1['peak_heights']
+            pos1 = pos1[0]
+            pos2 = pos2['peak_heights']
+            pos2 = pos2[0]
+            
+            pos2 = -pos2
+            pos2 = abs(pos2)
+            
+            form = (pos2 + pos1)
+            height = form
             heights.append(height)
             
         return heights
@@ -164,21 +176,27 @@ class SQLengthExtractor():
     
     def fit(self, database):
         lengths = []
+        wl = database['wavelet']
         
-        for i, wave in enumerate(database['wavelet']):     
+        for i, wave in enumerate(wl):     
             if i == 0:
                 length = np.nan
                 lengths.append(length)
             
             else:
-                wl = database['wavelet']
                 pastwave = wl[i - 1]
-                highpast, position = find_peaks(pastwave, height=self.c)
-                low, position = find_peaks(wave, height=self.c)
+                highpast, pos1 = find_peaks(pastwave, height=self.c)
+                low, pos2 = find_peaks(-wave, height=self.c)
                 
-                post_qrs = pastwave[int(highpast[0]):int(pastwave[-1]))]
+                pos1 = pos1['peak_heights']
+                pos1 = pos1[0]
+                pos2 = pos2['peak_heights']
+                pos2 = pos2[0]
+                
+                end = len(pastwave)
+                post_qrs = pastwave[int(highpast[0]):int(end)]
                 post_qrs = len(post_qrs)
-                pre_qrs = len(wave[int(0):int(low[0]]))
+                pre_qrs = len(wave[int(0):int(low[0])])
                 length = pre_qrs + post_qrs
                 lengths.append(length)
                 
