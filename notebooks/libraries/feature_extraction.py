@@ -22,6 +22,7 @@ class LargeFrequencyExtractor():
         coeff2 = []
         coeff3 = []
         coeff4 = []
+        coeff5 = []
         
         for wave in ecg_waves:
             coeffs = wavedec(wave, 'db1', level=4)
@@ -29,11 +30,13 @@ class LargeFrequencyExtractor():
             coeff2.append(coeffs[1])
             coeff3.append(coeffs[2])
             coeff4.append(coeffs[3])
+            coeff5.append(coeffs[4])
         
         database['coefficient 1'] = coeff1
         database['coefficient 2'] = coeff2
         database['coefficient 3'] = coeff3
         database['coefficient 4'] = coeff4
+        database['coefficient 5'] = coeff5
         # Multilevel discrete decomposition of ECG waves for compression and noise reduction.
         
         return database
@@ -201,3 +204,26 @@ class SQLengthExtractor():
                 lengths.append(length)
                 
         return lengths
+    
+class LargeFrequencyRemover():
+    
+    def __init__(self):
+        pass
+        
+    def fit(self, database):
+        
+        database = database['ecg']
+        wavelets = []
+        
+        for wave in database:
+            peaks, pos = find_peaks(-wave, height=35)
+            for i, p in enumerate(peaks):
+                if i == 0:
+                    wavelets.append(wave[int(peaks[0]):int(peaks[i])])
+                else:
+                    wavelets.append(wave[int(peaks[i-1]):int(peaks[i])])
+        return wavelets
+            
+            
+        
+    
