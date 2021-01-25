@@ -4,13 +4,13 @@ Created on Wed Nov 18 12:33:50 2020
 
 @author: Oliver
 """
-from pywt import wavedec
+from pywt import wavedec, waverec
 from scipy.signal import savgol_filter, find_peaks
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-class LargeFrequencyExtractor():
+class FrequencyExtractor():
     
     def __init__(self):
         pass
@@ -18,26 +18,48 @@ class LargeFrequencyExtractor():
     def fit(self, database):
         ecg_waves = database['ecg'].tolist()
         
-        coeff1 = []
-        coeff2 = []
-        coeff3 = []
-        coeff4 = []
-        coeff5 = []
+        a6 = []
+        d6 = []
+        d5 = []
+        d4 = []
+        d3 = []
+        d2 = []
+        d1 = []
+        small = []
+        large = []
         
         for wave in ecg_waves:
-            coeffs = wavedec(wave, 'db1', level=4)
-            coeff1.append(coeffs[0])
-            coeff2.append(coeffs[1])
-            coeff3.append(coeffs[2])
-            coeff4.append(coeffs[3])
-            coeff5.append(coeffs[4])
+            coeffs = wavedec(wave, 'sym6', level=6)
+            a6.append(coeffs[-0])
+            d6.append(coeffs[-1])
+            d5.append(coeffs[-2])
+            d4.append(coeffs[-3])
+            d3.append(coeffs[-4])
+            d2.append(coeffs[-5])
+            d1.append(coeffs[-6])
+            
+            small.append(waverec(coeffs[:-6] + [None] * 6, 'sym6'))
+            
+            coeffs[-0] = np.zeros_like(coeffs[-0])
+            coeffs[-1] = np.zeros_like(coeffs[-1])
+            coeffs[-2] = np.zeros_like(coeffs[-2])
+            coeffs[-3] = np.zeros_like(coeffs[-3])
+            coeffs[-6] = np.zeros_like(coeffs[-6])
+            
+            large.append(waverec(coeffs, 'sym6'))
         
-        database['coefficient 1'] = coeff1
-        database['coefficient 2'] = coeff2
-        database['coefficient 3'] = coeff3
-        database['coefficient 4'] = coeff4
-        database['coefficient 5'] = coeff5
+        database['coefficient a6'] = a6
+        database['coefficient d6'] = d6
+        database['coefficient d5'] = d5
+        database['coefficient d4'] = d4
+        database['coefficient d3'] = d3
+        database['coefficient d2'] = d2
+        database['coefficient d1'] = d1
+        database['small frequencies'] = small
+        database['large frequencies'] = large
         # Multilevel discrete decomposition of ECG waves for compression and noise reduction.
+        
+        
         
         return database
 
@@ -47,7 +69,7 @@ class PeakExtractor():
         self.c = c
     
     def fit(self, database):
-        ecg_waves = database['coefficient 4'].tolist()
+        ecg_waves = database['large frequencies'].tolist()
         peaks_list = []
         peak_position = []
         
@@ -116,7 +138,7 @@ class WaveletSeparator():
         for i in range(0, len(database)):
             subject = database.iloc[i]
             midpoint = subject['midpoints']
-            ecg = subject['coefficient 4']
+            ecg = subject['large frequencies']
             condition = subject['condition']
             name = subject['name']
             x = midpoint[0,:]
@@ -130,33 +152,42 @@ class WaveletSeparator():
             
         return new_database
     
-class QRSHeightExtractor():
+class QRSFeatureExtractor():
     
     def __init__(self, c):
         self.c = c
     
     def fit(self, database):
-        heights = []
+        qr_heights = []
+        rs_heights = []
+        qs_lengths = []
         
         for wave in database['wavelet']:
             high, pos1 = find_peaks(wave, height=self.c)
             low, pos2 = find_peaks(-wave, height=self.c)
             
-            height1 = (high - low)
-            
             pos1 = pos1['peak_heights']
-            pos1 = pos1[0]
             pos2 = pos2['peak_heights']
-            pos2 = pos2[0]
+
+            q = pos2[0]
+            r = pos1[0]
+            s = pos2[-1]
             
-            pos2 = -pos2
-            pos2 = abs(pos2)
+            q2 = low[0]
+            s2 = low[-1]
             
-            form = (pos2 + pos1)
-            height = form
-            heights.append(height)
+            q = -q
+            q = abs(q)
             
-        return heights
+            qr_height = (q + r)
+            rs_height = (r + s)
+            qs_length = (q + s)
+            
+            qr_heights.append(qr_height)
+            rs_heights.append(rs_height)
+            qs_lengths.append(qs_length)
+            
+        return qr_heights, rs_heights, qs_lengths
 
 class IntervalLengthExtractor():
     
@@ -172,58 +203,53 @@ class IntervalLengthExtractor():
             
         return lengths
     
-class SQLengthExtractor():
+class TimeGapExtractor():
     
     def __init__(self, c):
         self.c = c
     
     def fit(self, database):
-        lengths = []
+        timegaps = []
         wl = database['wavelet']
         
         for i, wave in enumerate(wl):     
             if i == 0:
-                length = np.nan
-                lengths.append(length)
+                timegap = np.nan
+                timegaps.append(timegap)
             
             else:
-                pastwave = wl[i - 1]
-                highpast, pos1 = find_peaks(pastwave, height=self.c)
-                low, pos2 = find_peaks(-wave, height=self.c)
+                previous_wave = wl[i - 1]
+                previous_peaks, pos1 = find_peaks(-previous_wave, height=self.c)
+                next_peaks, pos2 = find_peaks(-wave, height=self.c)
                 
                 pos1 = pos1['peak_heights']
-                pos1 = pos1[0]
                 pos2 = pos2['peak_heights']
-                pos2 = pos2[0]
                 
-                end = len(pastwave)
-                post_qrs = pastwave[int(highpast[0]):int(end)]
+                q1 = previous_peaks[0]
+                s1 = previous_peaks[-1]
+                q2 = next_peaks[0]
+                s2 = next_peaks[-1]
+                
+                end = len(previous_wave)
+                post_qrs = previous_wave[int(s1):int(end)]
                 post_qrs = len(post_qrs)
-                pre_qrs = len(wave[int(0):int(low[0])])
-                length = pre_qrs + post_qrs
-                lengths.append(length)
+                pre_qrs = len(wave[int(0):int(q2)])
+                timegap = pre_qrs + post_qrs
+                timegaps.append(timegap)
                 
-        return lengths
+        return timegaps
+
+class SmallFrequencySeparator():
     
-class LargeFrequencyRemover():
-    
-    def __init__(self):
-        pass
+    def __init__(self, c):
+        self.c = c
         
     def fit(self, database):
         
-        database = database['ecg']
-        wavelets = []
+        t_waves = []
+        p_waves = []
         
-        for wave in database:
-            peaks, pos = find_peaks(-wave, height=35)
-            for i, p in enumerate(peaks):
-                if i == 0:
-                    wavelets.append(wave[int(peaks[0]):int(peaks[i])])
-                else:
-                    wavelets.append(wave[int(peaks[i-1]):int(peaks[i])])
-        return wavelets
-            
+        
             
         
     
