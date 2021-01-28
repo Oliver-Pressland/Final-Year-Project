@@ -241,13 +241,52 @@ class TimeGapExtractor():
 
 class SmallFrequencySeparator():
     
-    def __init__(self, c):
-        self.c = c
+    def __init__(self):
+        pass
         
-    def fit(self, database):
-        
-        t_waves = []
+    def fit(self, database):  
         p_waves = []
+        t_waves = []
+        freqs = database['small frequencies']
+        
+        for wave in freqs:
+            pt, pos_pt = find_peaks(-wave, 5)
+            p_waves.append(wave[0: pt[0]])
+            plt.title('0')
+            plt.plot(wave[0: pt[0]])
+            plt.show()
+            
+            for i, pts in enumerate(pt, 1):
+                try:
+                    print(i)
+                    separation = wave[pt[i-1]:pt[i]]
+                    plt.title(i)
+                    plt.plot(separation)
+                    plt.show()
+                    
+                    startpoint = separation[0]
+                    endpoint = separation[-1]
+                    pt2, pos_pt2 = find_peaks(-separation, -5)
+                    print("pt2 before: " + str(pt2))
+                    if pt2.size > 1:
+                        pt2 = pt2[-1]
+                    
+                    elif pt2.size == 0:
+                        break
+                    
+                    midpoint = int(pt2)
+                    print("pt2 now: " + str(midpoint))
+                    #endpoint = int(endpoint)
+                    #print(midpoint)
+                    #t_waves.append(separation[0:midpoint])
+                    #p_waves.append(separation[midpoint:endpoint])
+                except IndexError:
+                    print("An anomaly occurred with data subject: " + str(i))
+                    print(IndexError)
+                finally:
+                    continue
+            #return p_waves, t_waves
+                
         
         
             
