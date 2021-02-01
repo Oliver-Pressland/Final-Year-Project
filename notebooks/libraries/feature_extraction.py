@@ -29,7 +29,7 @@ class FrequencyExtractor():
         large = []
         
         for wave in ecg_waves:
-            coeffs = wavedec(wave, 'sym6', level=6)
+            coeffs = wavedec(wave, 'db4', level=6)
             a6.append(coeffs[-0])
             d6.append(coeffs[-1])
             d5.append(coeffs[-2])
@@ -38,7 +38,16 @@ class FrequencyExtractor():
             d2.append(coeffs[-5])
             d1.append(coeffs[-6])
             
-            small.append(waverec(coeffs[:-6] + [None] * 6, 'sym6'))
+            coeffs[-1] = np.zeros_like(coeffs[-1])
+            coeffs[-2] = np.zeros_like(coeffs[-2])
+            coeffs[-3] = np.zeros_like(coeffs[-3])
+            coeffs[-4] = np.zeros_like(coeffs[-4])
+            coeffs[-5] = np.zeros_like(coeffs[-5])
+            coeffs[-6] = np.zeros_like(coeffs[-6])
+            
+            small.append(waverec(coeffs, 'db4'))
+            
+            coeffs = wavedec(wave, 'db4', level=6)
             
             coeffs[-0] = np.zeros_like(coeffs[-0])
             coeffs[-1] = np.zeros_like(coeffs[-1])
@@ -46,7 +55,7 @@ class FrequencyExtractor():
             coeffs[-3] = np.zeros_like(coeffs[-3])
             coeffs[-6] = np.zeros_like(coeffs[-6])
             
-            large.append(waverec(coeffs, 'sym6'))
+            large.append(waverec(coeffs, 'db4'))
         
         database['coefficient a6'] = a6
         database['coefficient d6'] = d6
@@ -250,7 +259,7 @@ class SmallFrequencySeparator():
         freqs = database['small frequencies']
         
         for wave in freqs:
-            pt, pos_pt = find_peaks(-wave, 5)
+            pt, pos_pt = find_peaks(-wave, 12)
             p_waves.append(wave[0: pt[0]])
             plt.title('0')
             plt.plot(wave[0: pt[0]])
