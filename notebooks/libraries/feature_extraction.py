@@ -131,12 +131,7 @@ class PeakExtractor():
             
             peaks, _ = find_peaks(wave, height=self.c, prominence=self.p, distance=100)
             
-            
-            # Find all peaks and their positions on one ECG
-            #peaks = peaks[peaks > 100]
-            #peaks = peaks[peaks < 3500]
-            
-            # Remove all peaks that do not lie on a complete interval
+            # Find Y position of the peaks
             position = np.zeros(len(peaks))
             
             for i, peak in enumerate(peaks):

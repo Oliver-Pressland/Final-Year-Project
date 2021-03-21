@@ -35,22 +35,32 @@ class QRSfeatures():
         
         # 2. QR height, RS height, QS time length
             
-        def QRS_extraction(wave, sample_rate):
+        def QRS_extraction(wave, sample_rate, gain):
             try:
                 high, pos1 = find_peaks(wave, height=self.c)
                 low, pos2 = find_peaks(-wave, height=20)
                 
-                #high = high[high > 100]
-                #low = low[low > 100]
-            
-                q = low[0]
-                r = high[0]
-                s = low[-1]
+                pos1 = wave[high]
+                pos2 = wave[low]
+
+                lowmin1_y = min(pos2)
+                lowmin1_x = low[pos2.argmin(axis=0)]
+                pos2_new = np.delete(pos2, pos2.argmin())
+
+                lowmin2_y = min(pos2_new)
+                lowmin2_x = low[np.where(pos2==lowmin2_y)]
+
+                highmax_y = max(pos1)
+                highmax_x = high[pos1.argmax(axis=0)]
+
+                q = min(lowmin2_x, lowmin1_x)
+                r = highmax_x
+                s = max(lowmin2_x, lowmin1_x)
                 
                 # Find QRS by finding the peaks and troughs of sample
                 
-                qr_height = wave[r] - wave[q]
-                rs_height = wave[r] - wave[s]
+                qr_height = (wave[r] - wave[q]) / gain
+                rs_height = (wave[r] - wave[s]) / gain
                 qs_timelength = (s - q) * sample_rate
                 
             except (IndexError, ValueError) as e:
@@ -69,10 +79,10 @@ class QRSfeatures():
                 
                 total = np.hstack((this_wave, next_wave))
                 
-                peaks, pos = find_peaks(total, height=self.c)
-            
+                peaks, pos = find_peaks(total, height=self.c, prominence=30)
+
                 r1 = peaks[0]
-                r2 = peaks[1]
+                r2 = peaks[-1]
                 
                 timegap = (r2 - r1) * sample_rate
             
@@ -83,6 +93,16 @@ class QRSfeatures():
                 
             return timegap
         
+        def arraycheck(value):
+            
+            # Convert array value to scalar if this is the case
+            
+            if type(value) is np.ndarray:
+                new_value = value.item()
+            else:
+                new_value = value
+            return new_value
+        
         ## START OF THE METHOD ##
         
         time_lengths = []
@@ -91,7 +111,8 @@ class QRSfeatures():
         qs_timelengths = []
         timegaps = []
         
-        f = 0.002777777777
+        f = 0.002777777777777777777777
+        g = 200
         
         for i, this_item in enumerate(column_name_in):
             try:
@@ -101,7 +122,12 @@ class QRSfeatures():
                 time_lengths.append(time_length)
                 
                 # Extract QRS info
-                qr_height, rs_height, qs_timelength = QRS_extraction(this_item, f)
+                qr_height, rs_height, qs_timelength = QRS_extraction(this_item, f, g)
+                
+                qr_height = arraycheck(qr_height)
+                rs_height = arraycheck(rs_height)
+                qs_timelength = arraycheck(qs_timelength)
+                
                 qr_heights.append(qr_height)
                 rs_heights.append(rs_height)
                 qs_timelengths.append(qs_timelength)
@@ -109,7 +135,10 @@ class QRSfeatures():
                 # Timegaps extractions
     
                 next_item = column_name_in[i + 1]
+        
                 timegap = timegap_length(this_item, next_item, f)
+                timegap = arraycheck(timegap)
+
                 timegaps.append(timegap)
                 
             except KeyError as e:
