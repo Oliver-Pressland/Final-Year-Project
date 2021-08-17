@@ -1,5 +1,4 @@
-<h> Automated feature detection and classification of Electrocardiographic Time Series data </h>
-
+# Automated feature detection and classification of Electrocardiographic Time Series data - Final Year Project for Brunel University London
 
 Myocardial infarction is often correlated to the rise of heart conditions that may potentially be minor in nature, but can be spotted using data called an Electrocardiogram. These are irregular heart rhythms known as arrhythmia. Fortunately, heart rhythms can be monitored and diagnosed using a graph called an Electrocardiogram (ECG). Using the ECG, the aim of this project is to extract key features from ECGs in order to develop a solution that classifies different heart conditions.
 
